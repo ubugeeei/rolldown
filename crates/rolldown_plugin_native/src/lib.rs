@@ -770,7 +770,8 @@ mod tests {
 
   #[test]
   fn extensionless_library_names_use_the_platform_convention() {
-    let path = resolve_library_path("/tmp/native_plugin", None).unwrap();
+    let source = std::env::temp_dir().join("native_plugin");
+    let path = resolve_library_path(source.to_str().unwrap(), None).unwrap();
     assert_eq!(
       path.file_name().unwrap(),
       format!("{}native_plugin{}", std::env::consts::DLL_PREFIX, std::env::consts::DLL_SUFFIX)
@@ -780,9 +781,9 @@ mod tests {
 
   #[test]
   fn already_prefixed_library_names_are_not_prefixed_twice() {
-    let path =
-      resolve_library_path(&format!("/tmp/{}native_plugin", std::env::consts::DLL_PREFIX), None)
-        .unwrap();
+    let source =
+      std::env::temp_dir().join(format!("{}native_plugin", std::env::consts::DLL_PREFIX));
+    let path = resolve_library_path(source.to_str().unwrap(), None).unwrap();
     assert_eq!(
       path.file_name().unwrap(),
       format!("{}native_plugin{}", std::env::consts::DLL_PREFIX, std::env::consts::DLL_SUFFIX)
@@ -792,7 +793,8 @@ mod tests {
 
   #[test]
   fn local_file_urls_are_supported() {
-    let url = url::Url::from_file_path("/tmp/native plugin").unwrap();
+    let source = std::env::temp_dir().join("native plugin");
+    let url = url::Url::from_file_path(source).unwrap();
     let path = resolve_library_path(url.as_str(), None).unwrap();
     assert_eq!(
       path.file_name().unwrap(),

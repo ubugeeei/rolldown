@@ -86,10 +86,8 @@ integrations must account for this runtime property; prefer Rust, C++, C, or Zig
 when clean in-process unload and implicit Node shutdown are required.
 :::
 
-See the [complete native plugin example][native-plugin-example] for a
-configuration and buildable plugin.
-
-[native-plugin-example]: https://github.com/rolldown/rolldown/tree/main/examples/native-plugin
+See `examples/native-plugin` for the complete configuration and buildable
+plugin.
 
 ## ABI v1
 
