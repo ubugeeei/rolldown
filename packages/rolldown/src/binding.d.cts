@@ -2699,8 +2699,8 @@ export interface BindingNativeMemoryStats {
 }
 
 export interface BindingNativePluginConfig {
-  library: string
-  config?: string
+  source: string
+  config?: any
 }
 
 export interface BindingOptimization {

@@ -3016,10 +3016,14 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "libloading 0.8.9",
+ "oxc_resolver",
  "rolldown_common",
  "rolldown_plugin",
  "rolldown_plugin_native_abi",
  "rolldown_sourcemap",
+ "serde",
+ "serde_json",
+ "tempfile",
  "url",
 ]
 

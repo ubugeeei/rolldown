@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use napi::{Unknown, bindgen_prelude::FromNapiValue};
 use rolldown_plugin::{__inner::SharedPluginable, Plugin};
 use rolldown_plugin_bundle_analyzer::BundleAnalyzerPlugin;
@@ -53,10 +55,9 @@ impl std::fmt::Debug for BindingBuiltinPlugin<'_> {
   }
 }
 
-impl TryFrom<BindingBuiltinPlugin<'_>> for SharedPluginable {
-  type Error = napi::Error;
-
-  fn try_from(plugin: BindingBuiltinPlugin) -> Result<Self, Self::Error> {
+impl BindingBuiltinPlugin<'_> {
+  pub(crate) fn into_shared(self, cwd: Option<&Path>) -> napi::Result<SharedPluginable> {
+    let plugin = self;
     Ok(match plugin.__name {
       BindingBuiltinPluginName::BundleAnalyzer => {
         let plugin = if let Some(options) = plugin.options {
@@ -82,7 +83,7 @@ impl TryFrom<BindingBuiltinPlugin<'_>> for SharedPluginable {
         };
         Plugin::new_shared(plugin)
       }
-      BindingBuiltinPluginName::NativePlugin => load_native_plugin(plugin.options)?,
+      BindingBuiltinPluginName::NativePlugin => load_native_plugin(plugin.options, cwd)?,
       BindingBuiltinPluginName::Replace => {
         let config = if let Some(options) = plugin.options {
           BindingReplacePluginConfig::from_unknown(options)?
@@ -201,6 +202,14 @@ impl TryFrom<BindingBuiltinPlugin<'_>> for SharedPluginable {
   }
 }
 
+impl TryFrom<BindingBuiltinPlugin<'_>> for SharedPluginable {
+  type Error = napi::Error;
+
+  fn try_from(plugin: BindingBuiltinPlugin) -> Result<Self, Self::Error> {
+    plugin.into_shared(None)
+  }
+}
+
 fn native_plugin_config(options: Option<Unknown<'_>>) -> napi::Result<BindingNativePluginConfig> {
   let options = options.ok_or_else(|| {
     napi::Error::new(napi::Status::InvalidArg, "Missing options for native plugin")
@@ -210,11 +219,22 @@ fn native_plugin_config(options: Option<Unknown<'_>>) -> napi::Result<BindingNat
 }
 
 #[cfg(not(target_family = "wasm"))]
-fn load_native_plugin(options: Option<Unknown<'_>>) -> napi::Result<SharedPluginable> {
+fn load_native_plugin(
+  options: Option<Unknown<'_>>,
+  cwd: Option<&Path>,
+) -> napi::Result<SharedPluginable> {
   let config = native_plugin_config(options)?;
+  let serialized_config =
+    config.config.as_ref().map(serde_json::to_string).transpose().map_err(|error| {
+      napi::Error::new(
+        napi::Status::InvalidArg,
+        format!("Failed to serialize native plugin config: {error}"),
+      )
+    })?;
   let plugin = rolldown_plugin_native::ExternalNativePlugin::load(
-    &config.library,
-    config.config.as_deref().unwrap_or("null"),
+    &config.source,
+    cwd,
+    serialized_config.as_deref().unwrap_or("null"),
   )
   .map_err(|error| {
     napi::Error::new(napi::Status::InvalidArg, format!("Failed to load native plugin: {error:#}"))
@@ -224,7 +244,10 @@ fn load_native_plugin(options: Option<Unknown<'_>>) -> napi::Result<SharedPlugin
 }
 
 #[cfg(target_family = "wasm")]
-fn load_native_plugin(options: Option<Unknown<'_>>) -> napi::Result<SharedPluginable> {
+fn load_native_plugin(
+  options: Option<Unknown<'_>>,
+  _cwd: Option<&Path>,
+) -> napi::Result<SharedPluginable> {
   native_plugin_config(options)?;
 
   Err(napi::Error::new(

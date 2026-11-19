@@ -22,9 +22,8 @@ import { nativePlugin } from 'rolldown/experimental';
 export default defineConfig({
   input: './src/main.js',
   plugins: [
-    nativePlugin({
-      // Rolldown adds the platform's conventional library prefix and suffix.
-      library: new URL('./native/plugin', import.meta.url),
+    nativePlugin('@example/rolldown-plugin-native', {
+      // Plugin-defined JSON passed once to NativePlugin::new.
       config: { message: 'Hello from native code' },
       enforce: 'pre',
     }),
@@ -32,10 +31,14 @@ export default defineConfig({
 });
 ```
 
-`library` must be an absolute path or file URL. If it has no extension,
-Rolldown adds the current platform's dynamic-library prefix and suffix.
-`config` must be JSON-serializable and is serialized once during option
-normalization. `enforce` uses the same ordering as JavaScript plugins.
+For an npm package, Rolldown reads the package metadata and selects the artifact
+for its compiled target. It does not import JavaScript from the plugin package.
+An absolute path or local file URL is also accepted for local development. If
+that path has no extension, Rolldown adds the current platform's dynamic-library
+prefix and suffix.
+`config` is optional plugin-defined JSON data. The native binding converts it
+once and passes it to the plugin during initialization without interpreting it.
+`enforce` uses the same ordering as JavaScript plugins.
 
 Native libraries are trusted in-process code with the same permissions as
 Rolldown. Never load an untrusted plugin.
@@ -103,18 +106,55 @@ C interoperability.
 
 ## Distribution
 
-A native binary is platform-specific even though its configuration is not.
-Production packages should keep platform selection inside the plugin package:
+A native binary is platform-specific even though its configuration is not. The
+main npm package contains metadata rather than a JavaScript wrapper:
+
+```json
+{
+  "name": "@example/rolldown-plugin-native",
+  "rolldown": {
+    "abi": 1,
+    "artifacts": {
+      "aarch64-apple-darwin": "@example/rolldown-plugin-native-darwin-arm64",
+      "x86_64-unknown-linux-gnu": "@example/rolldown-plugin-native-linux-x64-gnu",
+      "x86_64-pc-windows-msvc": "@example/rolldown-plugin-native-win32-x64-msvc"
+    }
+  },
+  "optionalDependencies": {
+    "@example/rolldown-plugin-native-darwin-arm64": "1.0.0",
+    "@example/rolldown-plugin-native-linux-x64-gnu": "1.0.0",
+    "@example/rolldown-plugin-native-win32-x64-msvc": "1.0.0"
+  }
+}
+```
+
+Each artifact package contains one prebuilt library and identifies it in its
+own metadata:
+
+```json
+{
+  "name": "@example/rolldown-plugin-native-darwin-arm64",
+  "os": ["darwin"],
+  "cpu": ["arm64"],
+  "rolldown": {
+    "abi": 1,
+    "binary": "plugin.dylib"
+  }
+}
+```
+
+Plugin publishers should:
 
 - publish one artifact package for each supported OS and architecture;
 - list exact-version artifact packages as optional dependencies of a small
-  wrapper package;
+  metadata package;
 - avoid install-time download or compilation scripts;
-- expose a plugin factory that passes a fixed, extensionless file URL to
-  `nativePlugin`.
+- use `rolldown.devBinary` for an extensionless local build during development.
 
-Consumers should not need a `process.platform` switch. Standard package-manager
-integrity checks and lockfiles remain part of the trust boundary.
+Consumers do not write a `node_modules` path, choose a file extension, or use a
+`process.platform` switch. Rolldown resolves the package and selects the target
+artifact in Rust. Standard package-manager integrity checks and lockfiles
+remain part of the trust boundary.
 
 ## Performance
 

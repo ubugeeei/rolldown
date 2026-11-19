@@ -102,6 +102,7 @@ test-native-plugin: build-rolldown
 # The Rust example stays in the default Node suite because it needs no extra toolchains.
 test-native-plugin-only:
   cargo build --manifest-path examples/native-plugin/plugin/Cargo.toml --release
+  node examples/native-plugin/link-development-package.mjs
   cd examples/native-plugin && pnpm rolldown -c
   node examples/native-plugin/verify.mjs
 

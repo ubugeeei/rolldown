@@ -24,7 +24,7 @@ derive_more = { workspace = true }
 futures = { workspace = true }
 indexmap = { workspace = true }
 itertools = { workspace = true }
-napi = { workspace = true }
+napi = { workspace = true, features = ["serde-json"] }
 napi-derive = { workspace = true }
 num_cpus = { workspace = true }
 oxc = { workspace = true }

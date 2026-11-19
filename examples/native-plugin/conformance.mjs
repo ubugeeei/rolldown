@@ -9,10 +9,10 @@ const languages = ['c', 'cpp', 'go', 'zig'];
 const input = fileURLToPath(new URL('./src/conformance.foreign.js', import.meta.url));
 
 async function testPlugin(language) {
-  const library = new URL(`./artifacts/native_plugin_${language}`, import.meta.url);
+  const source = new URL(`./artifacts/native_plugin_${language}`, import.meta.url);
   const build = await rolldown({
     input,
-    plugins: [nativePlugin({ library })],
+    plugins: [nativePlugin(source)],
   });
 
   try {

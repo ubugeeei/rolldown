@@ -21,10 +21,15 @@ pnpm rolldown -c
 node dist/main.native.js
 ```
 
-The extensionless URL in `plugin.mjs` is portable: Rolldown adds the platform's
-conventional prefix and `.dll`, `.dylib`, or `.so` suffix. A published plugin
-would normally ship one npm optional dependency per platform and keep artifact
-selection inside its wrapper package.
+The example package uses `rolldown.devBinary` with an extensionless Cargo output
+path. The test task links that working package into `node_modules`, so
+`plugin.mjs` exercises the same package-name resolution that consumers use.
+Rolldown adds the platform's conventional prefix and `.dll`, `.dylib`, or `.so`
+suffix for the development path.
+
+A published plugin instead maps target triples to optional artifact packages in
+`rolldown.artifacts`. Rolldown selects and loads the package's prebuilt binary in
+Rust without importing plugin JavaScript.
 
 `rolldown_plugin_native_abi` also ships `rolldown_plugin.h` for plugins
 implemented in C or any language that can export a C ABI.

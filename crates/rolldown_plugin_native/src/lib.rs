@@ -31,6 +31,8 @@ use rolldown_plugin_native_abi::{
 };
 use rolldown_sourcemap::{SourceMap, SourceMapRef};
 
+mod manifest;
+
 static HOST_API: ffi::HostApi = ffi::HostApi {
   header: ffi::Header { abi_version: ABI_VERSION, size: size_of::<ffi::HostApi>() },
   buffer_alloc: Some(buffer_alloc),
@@ -89,8 +91,8 @@ unsafe impl Send for ExternalNativePlugin {}
 unsafe impl Sync for ExternalNativePlugin {}
 
 impl ExternalNativePlugin {
-  pub fn load(library: &str, config: &str) -> Result<Self> {
-    let path = resolve_library_path(library)?;
+  pub fn load(source: &str, cwd: Option<&Path>, config: &str) -> Result<Self> {
+    let path = resolve_library_path(source, cwd)?;
     if !path.is_absolute() {
       bail!("native plugin library path must be absolute: {}", path.display());
     }
@@ -165,9 +167,9 @@ impl ExternalNativePlugin {
   }
 }
 
-fn resolve_library_path(library: &str) -> Result<PathBuf> {
-  let mut path = if library.get(..5).is_some_and(|prefix| prefix.eq_ignore_ascii_case("file:")) {
-    let url = url::Url::parse(library).context("native plugin library is not a valid file URL")?;
+fn resolve_library_path(source: &str, cwd: Option<&Path>) -> Result<PathBuf> {
+  let path = if source.get(..5).is_some_and(|prefix| prefix.eq_ignore_ascii_case("file:")) {
+    let url = url::Url::parse(source).context("native plugin library is not a valid file URL")?;
     if url.host_str().is_some() || url.query().is_some() || url.fragment().is_some() {
       bail!("native plugin library file URL must not contain a host, query, or fragment");
     }
@@ -175,12 +177,24 @@ fn resolve_library_path(library: &str) -> Result<PathBuf> {
       .to_file_path()
       .map_err(|()| anyhow::anyhow!("native plugin library URL must point to a local file"))?
   } else {
-    if library.contains("://") {
-      bail!("native plugin library must be a local absolute path or file URL");
+    if source.contains("://") {
+      bail!("native plugin source must be a package name, absolute path, or file URL");
     }
-    PathBuf::from(library)
+    let path = PathBuf::from(source);
+    if path.is_absolute() {
+      path
+    } else {
+      return manifest::resolve_package_library(
+        source,
+        cwd.context("native plugin package resolution requires the build cwd")?,
+      );
+    }
   };
 
+  with_platform_library_name(path)
+}
+
+fn with_platform_library_name(mut path: PathBuf) -> Result<PathBuf> {
   if path.extension().is_none() {
     let name = path
       .file_name()
@@ -749,14 +763,14 @@ mod tests {
   }
 
   #[test]
-  fn relative_library_paths_are_rejected_before_loading() {
-    let error = ExternalNativePlugin::load("plugin.so", "{}").unwrap_err();
-    assert!(error.to_string().contains("must be absolute"));
+  fn package_sources_require_the_build_cwd() {
+    let error = ExternalNativePlugin::load("plugin.so", None, "{}").unwrap_err();
+    assert!(error.to_string().contains("requires the build cwd"));
   }
 
   #[test]
   fn extensionless_library_names_use_the_platform_convention() {
-    let path = resolve_library_path("/tmp/native_plugin").unwrap();
+    let path = resolve_library_path("/tmp/native_plugin", None).unwrap();
     assert_eq!(
       path.file_name().unwrap(),
       format!("{}native_plugin{}", std::env::consts::DLL_PREFIX, std::env::consts::DLL_SUFFIX)
@@ -767,7 +781,8 @@ mod tests {
   #[test]
   fn already_prefixed_library_names_are_not_prefixed_twice() {
     let path =
-      resolve_library_path(&format!("/tmp/{}native_plugin", std::env::consts::DLL_PREFIX)).unwrap();
+      resolve_library_path(&format!("/tmp/{}native_plugin", std::env::consts::DLL_PREFIX), None)
+        .unwrap();
     assert_eq!(
       path.file_name().unwrap(),
       format!("{}native_plugin{}", std::env::consts::DLL_PREFIX, std::env::consts::DLL_SUFFIX)
@@ -778,7 +793,7 @@ mod tests {
   #[test]
   fn local_file_urls_are_supported() {
     let url = url::Url::from_file_path("/tmp/native plugin").unwrap();
-    let path = resolve_library_path(url.as_str()).unwrap();
+    let path = resolve_library_path(url.as_str(), None).unwrap();
     assert_eq!(
       path.file_name().unwrap(),
       format!("{}native plugin{}", std::env::consts::DLL_PREFIX, std::env::consts::DLL_SUFFIX)
@@ -789,19 +804,19 @@ mod tests {
   #[test]
   fn remote_and_ambiguous_urls_are_rejected() {
     assert!(
-      resolve_library_path("https://example.com/plugin.so")
+      resolve_library_path("https://example.com/plugin.so", None)
         .unwrap_err()
         .to_string()
-        .contains("local absolute path")
+        .contains("package name, absolute path, or file URL")
     );
     assert!(
-      resolve_library_path("file://example.com/plugin.so")
+      resolve_library_path("file://example.com/plugin.so", None)
         .unwrap_err()
         .to_string()
         .contains("must not contain")
     );
     assert!(
-      resolve_library_path("file:///tmp/plugin.so?version=1")
+      resolve_library_path("file:///tmp/plugin.so?version=1", None)
         .unwrap_err()
         .to_string()
         .contains("must not contain")
@@ -816,12 +831,13 @@ mod tests {
 
     let directory = root.join(format!("directory{}", std::env::consts::DLL_SUFFIX));
     std::fs::create_dir(&directory).unwrap();
-    let error = ExternalNativePlugin::load(directory.to_str().unwrap(), "{}").unwrap_err();
+    let error = ExternalNativePlugin::load(directory.to_str().unwrap(), None, "{}").unwrap_err();
     assert!(error.to_string().contains("not a regular file"));
 
     let invalid_library = root.join(format!("invalid{}", std::env::consts::DLL_SUFFIX));
     std::fs::write(&invalid_library, b"not a dynamic library").unwrap();
-    let error = ExternalNativePlugin::load(invalid_library.to_str().unwrap(), "{}").unwrap_err();
+    let error =
+      ExternalNativePlugin::load(invalid_library.to_str().unwrap(), None, "{}").unwrap_err();
     assert!(error.to_string().contains("failed to open native plugin library"));
 
     std::fs::remove_dir_all(root).unwrap();

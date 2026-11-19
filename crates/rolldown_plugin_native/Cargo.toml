@@ -17,8 +17,14 @@ workspace = true
 [dependencies]
 anyhow = { workspace = true }
 libloading = { workspace = true }
+oxc_resolver = { workspace = true }
 rolldown_common = { workspace = true }
 rolldown_plugin = { workspace = true }
 rolldown_plugin_native_abi = { workspace = true }
 rolldown_sourcemap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 url = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

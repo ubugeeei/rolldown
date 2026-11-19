@@ -16,19 +16,24 @@
 
 ## Initialization flow
 
-1. The JS factory JSON-serializes `config` once and passes an absolute library
-   path or file URL through the binding object. An extensionless library name
-   receives the target platform's standard dynamic-library prefix and suffix.
-2. The binding calls `ExternalNativePlugin::load` before bundling starts.
-3. The loader opens the library and resolves the one required symbol,
+1. The JS factory passes a package name, absolute path, or file URL through the
+   binding object. napi-rs converts the JSON-compatible `config` to
+   `serde_json::Value`; Rust serializes it once before plugin initialization.
+2. For a package name, the loader resolves the package from the build cwd,
+   validates `rolldown.abi`, selects `rolldown.artifacts[TARGET]`, resolves the
+   artifact package, and reads `rolldown.binary`. This happens in Rust without
+   importing plugin JavaScript. Direct extensionless paths receive the target
+   platform's standard dynamic-library prefix and suffix.
+3. The binding calls `ExternalNativePlugin::load` before bundling starts.
+4. The loader opens the library and resolves the one required symbol,
    `rolldown_plugin_init`.
-4. Initialization receives the static host function table, borrowed config
+5. Initialization receives the static host function table, borrowed config
    JSON, and a descriptor whose initialized header advertises the writable
    capacity. It validates that header before constructing plugin state, then
    writes a `PluginDescriptor` or an error allocated by the host.
-5. The loader validates the ABI version, full v1 descriptor size, hook bits and
+6. The loader validates the ABI version, full v1 descriptor size, hook bits and
    pointers, plugin name UTF-8, and the state/deinit invariant.
-6. The descriptor is wrapped by the existing `Pluginable` machinery. Hook
+7. The descriptor is wrapped by the existing `Pluginable` machinery. Hook
    usage selects only the enabled ABI adapters, exactly as for in-tree plugins.
 
 ## Hook flow
@@ -76,9 +81,11 @@ WASI and browser builds retain the type surface but reject the plugin during
 option normalization with an unsupported-target error. Arbitrary host dynamic
 libraries are outside the WASI capability model.
 
-Before loading, the path is converted from an absolute path or local file URL,
-given a platform prefix/suffix when extensionless, canonicalized, and checked
-as a regular file. Unix uses `RTLD_NOW | RTLD_LOCAL`. Windows uses
+Before loading, a package source is resolved from the build cwd using Node
+package resolution. Metadata paths must stay within their package. A direct
+path is converted from an absolute path or local file URL and given a platform
+prefix/suffix when extensionless. The result is canonicalized and checked as a
+regular file. Unix uses `RTLD_NOW | RTLD_LOCAL`. Windows uses
 `LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS`, avoiding
 current-directory dependency lookup.
 

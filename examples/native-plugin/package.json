@@ -1,8 +1,12 @@
 {
-  "name": "rolldown-example-native-plugin",
+  "name": "@rolldown/native-plugin-example",
   "private": true,
   "type": "module",
   "devDependencies": {
     "rolldown": "workspace:*"
+  },
+  "rolldown": {
+    "abi": 1,
+    "devBinary": "./plugin/target/release/native_plugin_example"
   }
 }

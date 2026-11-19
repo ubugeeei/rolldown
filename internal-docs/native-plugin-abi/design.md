@@ -88,7 +88,12 @@ are required before stabilization.
    ABI should follow real integrations rather than speculative surface area.
 8. **Treat libraries as trusted code.** This is not a sandbox. A loaded plugin
    has Rolldown's filesystem, process, and memory permissions. The API accepts
-   only an explicit absolute path and documents this trust boundary.
+   a package name or an explicit absolute path and documents this trust
+   boundary.
+9. **Resolve packages without plugin JavaScript.** Published packages contain
+   ABI and target-artifact metadata. Rolldown resolves the selected optional
+   dependency in Rust; JavaScript participates only in the normal one-time
+   configuration handoff.
 
 ## Why not Node-API?
 
@@ -111,8 +116,8 @@ but its exported boundary stays C.
 The JavaScript factory is exported only from `rolldown/experimental`. The ABI
 still has strict version and size checks so experimental iteration fails safely
 rather than loading incompatible binaries. Stabilization additionally requires
-real framework integrations, benchmark evidence, and a cross-platform npm
-artifact convention.
+real framework integrations, benchmark evidence, and validation of the
+metadata-based npm artifact convention.
 
 ## Related
 

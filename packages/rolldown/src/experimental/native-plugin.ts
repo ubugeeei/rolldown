@@ -1,5 +1,13 @@
 import { BuiltinPlugin } from '../builtin-plugin/utils';
 
+export type NativePluginConfig =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly NativePluginConfig[]
+  | { readonly [key: string]: NativePluginConfig };
+
 /**
  * Options for an experimental native plugin loaded through Rolldown's versioned C ABI.
  *
@@ -8,46 +16,28 @@ import { BuiltinPlugin } from '../builtin-plugin/utils';
  * @experimental
  */
 export interface NativePluginOptions {
-  /**
-   * Absolute path or file URL to the shared library. When it has no extension,
-   * Rolldown adds the platform's native library prefix and suffix.
-   */
-  library: string | URL;
   /** JSON-serializable configuration passed to the plugin once at initialization. */
-  config?: unknown;
+  config?: NativePluginConfig;
   /** Run before or after plugins without an `enforce` value. */
   enforce?: 'pre' | 'post';
 }
 
-function normalizeLibrary(library: string | URL): string {
-  if (typeof library === 'string') {
-    if (library.length === 0) {
-      throw new TypeError('nativePlugin requires a library path or URL');
+function normalizeSource(source: string | URL): string {
+  if (typeof source === 'string') {
+    if (source.length === 0) {
+      throw new TypeError('nativePlugin requires a package name, absolute path, or file URL');
     }
-    return library;
+    return source;
   }
 
-  if (!(library instanceof URL)) {
-    throw new TypeError('nativePlugin library must be an absolute path or file URL');
+  if (!(source instanceof URL)) {
+    throw new TypeError('nativePlugin source must be an absolute path or file URL');
   }
-  if (library.protocol !== 'file:') {
-    throw new TypeError('nativePlugin library URL must use the file: protocol');
-  }
-
-  return library.toString();
-}
-
-function serializeConfig(config: unknown): string | undefined {
-  if (config === undefined) {
-    return undefined;
+  if (source.protocol !== 'file:') {
+    throw new TypeError('nativePlugin source URL must use the file: protocol');
   }
 
-  const serialized = JSON.stringify(config);
-  if (serialized === undefined) {
-    throw new TypeError('nativePlugin config must be JSON-serializable');
-  }
-
-  return serialized;
+  return source.toString();
 }
 
 /**
@@ -58,10 +48,13 @@ function serializeConfig(config: unknown): string | undefined {
  *
  * @experimental
  */
-export function nativePlugin(options: NativePluginOptions): BuiltinPlugin {
+export function nativePlugin(
+  source: string | URL,
+  options: NativePluginOptions = {},
+): BuiltinPlugin {
   const plugin = new BuiltinPlugin('builtin:native-plugin', {
-    library: normalizeLibrary(options.library),
-    config: serializeConfig(options.config),
+    source: normalizeSource(source),
+    config: options.config,
   });
 
   plugin.enforce = options.enforce;
