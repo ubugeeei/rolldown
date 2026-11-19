@@ -9,6 +9,8 @@ pub enum BindingBuiltinPluginName {
   EsmExternalRequire,
   #[napi(value = "builtin:isolated-declaration")]
   IsolatedDeclaration,
+  #[napi(value = "builtin:native-plugin")]
+  NativePlugin,
   #[napi(value = "builtin:replace")]
   Replace,
   #[napi(value = "builtin:vite-alias")]

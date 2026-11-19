@@ -73,6 +73,7 @@ const sidebarForApi: DefaultTheme.SidebarItem[] = [
         link: '/apis/plugin-api.md',
         items: [
           { text: 'Hook Filters', link: '/apis/plugin-api/hook-filters.md' },
+          { text: 'Native Plugins (Experimental)', link: '/apis/native-plugin-api.md' },
           { text: 'File URLs', link: '/apis/plugin-api/file-urls.md' },
           { text: 'Source Code Transformations', link: '/apis/plugin-api/transformations.md' },
           {

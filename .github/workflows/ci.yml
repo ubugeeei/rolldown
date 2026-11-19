@@ -37,6 +37,7 @@ jobs:
       # The WebContainer smoke test is opt-in: the `ci: webcontainer` label, or a PR that touches the
       # binding loader glue and its packaging (the `webcontainer-changes` filter below). Never on main.
       run-webcontainer: "${{ (steps.pr-labels.outputs.run-webcontainer == 'true') || (github.event_name == 'pull_request' && steps.filter.outputs.webcontainer-changes == 'true') }}"
+      native-plugin-changes: "${{ (steps.filter.outputs.native-plugin-changes == 'true') || (steps.branch.outputs.run-all == 'true') }}"
     steps:
       - name: Check branch
         id: branch
@@ -106,6 +107,21 @@ jobs:
               - 'packages/rolldown/src/rolldown-binding.wasi*'
               - 'packages/rolldown/src/wasi-worker*'
               - 'packages/rolldown/src/webcontainer-fallback.cjs'
+            native-plugin-changes:
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/reusable-native-plugin-test.yml'
+              - 'crates/rolldown_plugin_native/**'
+              - 'crates/rolldown_plugin_native_abi/**'
+              - 'crates/rolldown_binding/Cargo.toml'
+              - 'crates/rolldown_binding/src/options/plugin/binding_builtin_plugin.rs'
+              - 'crates/rolldown_binding/src/options/plugin/config/binding_native_plugin_config.rs'
+              - 'crates/rolldown_binding/src/options/plugin/config/mod.rs'
+              - 'crates/rolldown_binding/src/options/plugin/types/binding_builtin_plugin_name.rs'
+              - 'examples/native-plugin/**'
+              - 'justfile'
+              - 'packages/rolldown/src/experimental-index.ts'
+              - 'packages/rolldown/src/experimental/native-plugin.ts'
+              - 'packages/rolldown/tests/builtin-plugin/native-plugin.test.ts'
       - name: Show outputs
         run: |
           echo "Rust changes: ${{ (steps.filter.outputs.rust-changes == 'true') || (steps.branch.outputs.run-all == 'true') || (steps.pr-labels.outputs.run-windows == 'true') }}"
@@ -339,26 +355,46 @@ jobs:
 
   build-rolldown-windows:
     needs: changes
-    if: needs.changes.outputs.run-all == 'true' || needs.changes.outputs.run-windows == 'true'
+    if: needs.changes.outputs.run-all == 'true' || needs.changes.outputs.run-windows == 'true' || needs.changes.outputs.native-plugin-changes == 'true'
     uses: ./.github/workflows/reusable-native-build.yml
     with:
-      changed: ${{ needs.changes.outputs.node-changes == 'true' }}
+      changed: ${{ needs.changes.outputs.node-changes == 'true' || needs.changes.outputs.native-plugin-changes == 'true' }}
       os: windows-latest
 
   build-rolldown-macos:
     needs: changes
-    if: needs.changes.outputs.run-all == 'true'
+    if: needs.changes.outputs.run-all == 'true' || needs.changes.outputs.native-plugin-changes == 'true'
     uses: ./.github/workflows/reusable-native-build.yml
     with:
-      changed: ${{ needs.changes.outputs.node-changes == 'true' }}
+      changed: ${{ needs.changes.outputs.node-changes == 'true' || needs.changes.outputs.native-plugin-changes == 'true' }}
       os: macos-latest
 
   build-rolldown-ubuntu:
     needs: changes
     uses: ./.github/workflows/reusable-native-build.yml
     with:
-      changed: ${{ needs.changes.outputs.node-changes == 'true' }}
+      changed: ${{ needs.changes.outputs.node-changes == 'true' || needs.changes.outputs.native-plugin-changes == 'true' }}
       os: ubuntu-latest
+
+  native-plugin-test:
+    needs:
+      - changes
+      - build-rolldown-windows
+      - build-rolldown-macos
+      - build-rolldown-ubuntu
+    if: |
+      needs.changes.outputs.native-plugin-changes == 'true' &&
+      always() &&
+      needs.build-rolldown-windows.result == 'success' &&
+      needs.build-rolldown-macos.result == 'success' &&
+      needs.build-rolldown-ubuntu.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    uses: ./.github/workflows/reusable-native-plugin-test.yml
+    with:
+      os: ${{ matrix.os }}
 
   node-validation:
     name: Node Validation

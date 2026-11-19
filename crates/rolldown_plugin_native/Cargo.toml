@@ -1,0 +1,24 @@
+[package]
+name = "rolldown_plugin_native"
+version = "0.1.0"
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish = false
+repository.workspace = true
+description = "Dynamic loader for Rolldown native plugins"
+
+[lib]
+doctest = false
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+libloading = { workspace = true }
+rolldown_common = { workspace = true }
+rolldown_plugin = { workspace = true }
+rolldown_plugin_native_abi = { workspace = true }
+rolldown_sourcemap = { workspace = true }
+url = { workspace = true }

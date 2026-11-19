@@ -1,6 +1,7 @@
 mod binding_bundle_analyzer_plugin_config;
 mod binding_esm_external_require_plugin_config;
 mod binding_isolated_declaration_plugin_config;
+mod binding_native_plugin_config;
 mod binding_replace_plugin_config;
 mod binding_vite_alias_plugin_config;
 mod binding_vite_build_import_analysis_plugin_config;
@@ -17,6 +18,7 @@ mod binding_vite_transform_plugin_config;
 pub use binding_bundle_analyzer_plugin_config::BindingBundleAnalyzerPluginConfig;
 pub use binding_esm_external_require_plugin_config::BindingEsmExternalRequirePluginConfig;
 pub use binding_isolated_declaration_plugin_config::BindingIsolatedDeclarationPluginConfig;
+pub use binding_native_plugin_config::BindingNativePluginConfig;
 pub use binding_replace_plugin_config::BindingReplacePluginConfig;
 pub use binding_vite_alias_plugin_config::BindingViteAliasPluginConfig;
 pub use binding_vite_build_import_analysis_plugin_config::BindingViteBuildImportAnalysisPluginConfig;

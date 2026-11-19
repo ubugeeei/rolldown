@@ -1,0 +1,15 @@
+[package]
+name = "native_plugin_example"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+rolldown_plugin_native_abi = { path = "../../../crates/rolldown_plugin_native_abi" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[workspace]

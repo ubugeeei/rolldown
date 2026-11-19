@@ -1186,6 +1186,16 @@ checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
 
 [[package]]
 name = "libloading"
+version = "0.8.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55"
+dependencies = [
+ "cfg-if",
+ "windows-link",
+]
+
+[[package]]
+name = "libloading"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "754ca22de805bb5744484a5b151a9e1a8e837d5dc232c2d7d8c2e3492edc8b60"
@@ -1359,7 +1369,7 @@ version = "3.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d153beb7d5c973f4b9395be8a83054a28968b61188f1dd1a2cc2321af22daea2"
 dependencies = [
- "libloading",
+ "libloading 0.9.0",
 ]
 
 [[package]]
@@ -2659,6 +2669,7 @@ dependencies = [
  "rolldown_plugin_bundle_analyzer",
  "rolldown_plugin_esm_external_require",
  "rolldown_plugin_isolated_declaration",
+ "rolldown_plugin_native",
  "rolldown_plugin_oxc_runtime",
  "rolldown_plugin_replace",
  "rolldown_plugin_utils",
@@ -2997,6 +3008,27 @@ dependencies = [
  "rolldown_plugin",
  "rolldown_utils",
  "serde_json",
+]
+
+[[package]]
+name = "rolldown_plugin_native"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "libloading 0.8.9",
+ "rolldown_common",
+ "rolldown_plugin",
+ "rolldown_plugin_native_abi",
+ "rolldown_sourcemap",
+ "url",
+]
+
+[[package]]
+name = "rolldown_plugin_native_abi"
+version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "cc",
 ]
 
 [[package]]

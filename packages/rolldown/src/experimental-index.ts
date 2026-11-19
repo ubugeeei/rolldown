@@ -20,6 +20,7 @@ export {
 export { resolveTsconfig } from './utils/resolve-tsconfig';
 
 export { defineParallelPlugin } from './plugin/parallel-plugin';
+export { nativePlugin, type NativePluginOptions } from './experimental/native-plugin';
 
 // Builtin plugin factory
 export {

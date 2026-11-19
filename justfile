@@ -92,6 +92,29 @@ test-node-rollup *args="": build-rolldown
 test-node *args="": build-rolldown build-rolldown-test-dev-server
   just test-node-rolldown {{ args }}
   just test-node-rollup
+  just test-native-plugin-only
+
+# Build and run every native plugin language example through the JS API.
+test-native-plugin: build-rolldown
+  just test-native-plugin-only
+  just test-native-plugin-foreign-only
+
+# The Rust example stays in the default Node suite because it needs no extra toolchains.
+test-native-plugin-only:
+  cargo build --manifest-path examples/native-plugin/plugin/Cargo.toml --release
+  cd examples/native-plugin && pnpm rolldown -c
+  node examples/native-plugin/verify.mjs
+
+# Build and load the C, C++, Go, and Zig ABI conformance plugins.
+test-native-plugin-foreign-only:
+  cmake -S examples/native-plugin/foreign -B examples/native-plugin/foreign/build -DCMAKE_BUILD_TYPE=Release
+  cmake --build examples/native-plugin/foreign/build --config Release --parallel
+  node examples/native-plugin/conformance.mjs
+
+# Synthetic end-to-end comparison of equivalent native and JavaScript hooks.
+bench-native-plugin: build-rolldown-release
+  cargo build --manifest-path examples/native-plugin/plugin/Cargo.toml --release
+  node examples/native-plugin/benchmark.mjs
 
 # Run Rolldown's tests against the WASI binding, mirroring the WASI CI lane. Replaces any native `dist`, so run `just build-rolldown` afterwards.
 test-wasi *args="": build-rolldown-wasi build-rolldown-test-dev-server

@@ -21,7 +21,8 @@ use rolldown_plugin_vite_web_worker_post::ViteWebWorkerPostPlugin;
 
 use crate::options::plugin::config::{
   BindingBundleAnalyzerPluginConfig, BindingEsmExternalRequirePluginConfig,
-  BindingViteModulePreloadPolyfillPluginConfig, BindingViteReactRefreshWrapperPluginConfig,
+  BindingNativePluginConfig, BindingViteModulePreloadPolyfillPluginConfig,
+  BindingViteReactRefreshWrapperPluginConfig,
 };
 
 use super::{
@@ -81,6 +82,7 @@ impl TryFrom<BindingBuiltinPlugin<'_>> for SharedPluginable {
         };
         Plugin::new_shared(plugin)
       }
+      BindingBuiltinPluginName::NativePlugin => load_native_plugin(plugin.options)?,
       BindingBuiltinPluginName::Replace => {
         let config = if let Some(options) = plugin.options {
           BindingReplacePluginConfig::from_unknown(options)?
@@ -197,4 +199,36 @@ impl TryFrom<BindingBuiltinPlugin<'_>> for SharedPluginable {
       BindingBuiltinPluginName::OxcRuntime => Plugin::new_shared(OxcRuntimePlugin),
     })
   }
+}
+
+fn native_plugin_config(options: Option<Unknown<'_>>) -> napi::Result<BindingNativePluginConfig> {
+  let options = options.ok_or_else(|| {
+    napi::Error::new(napi::Status::InvalidArg, "Missing options for native plugin")
+  })?;
+
+  BindingNativePluginConfig::from_unknown(options)
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn load_native_plugin(options: Option<Unknown<'_>>) -> napi::Result<SharedPluginable> {
+  let config = native_plugin_config(options)?;
+  let plugin = rolldown_plugin_native::ExternalNativePlugin::load(
+    &config.library,
+    config.config.as_deref().unwrap_or("null"),
+  )
+  .map_err(|error| {
+    napi::Error::new(napi::Status::InvalidArg, format!("Failed to load native plugin: {error:#}"))
+  })?;
+
+  Ok(Plugin::new_shared(plugin))
+}
+
+#[cfg(target_family = "wasm")]
+fn load_native_plugin(options: Option<Unknown<'_>>) -> napi::Result<SharedPluginable> {
+  native_plugin_config(options)?;
+
+  Err(napi::Error::new(
+    napi::Status::GenericFailure,
+    "Native plugins are not supported by Rolldown's WASI/browser build",
+  ))
 }
